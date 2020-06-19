@@ -1,0 +1,527 @@
+
+REM ************************************************************
+REM *** Storm Sewer Program menu and job information program ***
+REM ***               February 22, 1992 Version              ***
+REM ************************************************************
+
+REM  PROGRAM CONSTANTS
+'-----------------------------------------------------------------------------'
+Z4$="New Jersey Department of Environmental Protection"
+Z5$="Atlantic City Data (TP#25)                       "
+TC1$="FOREST WITH HEAVY GROUND LITTER & MEADOW"
+TC2$="FALLOW OR MINIMUM TILLAGE CULTIVATION & WOODLAND"
+TC3$="SHORT GRASS PASTURE & LAWNS"
+TC4$="NEARLY BARE GROUND"
+TC5$="GRASSED WATERWAY"
+TC6$="PAVED AREA (SHEET FLOW) & SHALLOW GUTTER FLOW"
+TIMEC1$="JUNE 1986 SCS METHOD"
+TIMEC2$="SCS UPLAND METHOD   "
+PI#=3.141592653589793
+MAXAREAS% = 40
+MAXPIPES% = 40
+
+DIM P3$(4),P4$(4),A$(MAXAREAS%),A5#(MAXAREAS%),C#(MAXAREAS%),T8#(MAXAREAS%)
+DIM A1$(MAXAREAS%),A2$(MAXAREAS%),A3$(MAXAREAS%),A4$(MAXAREAS%),I1#(MAXAREAS%)
+DIM	L$(MAXAREAS%,4),S$(MAXAREAS%,4),T#(MAXAREAS%,4),T1$(MAXAREAS%,4)
+DIM	U%(MAXAREAS%,4),Z$(MAXAREAS%,4),B$(MAXAREAS%,4),DEP$(MAXAREAS%,4)
+DIM S5#(27),V5#(27),MIN1$(50)
+DIM INTEN$(50,7),A5$(MAXPIPES%)
+DIM	IN1$(MAXPIPES%),IN2$(MAXPIPES%),A6#(MAXPIPES%),A7#(MAXPIPES%)
+DIM	COMP1#(MAXPIPES%),T1#(MAXPIPES%),T2#(MAXPIPES%),T3#(MAXPIPES%)
+DIM	INT1#(MAXPIPES%),Q#(MAXPIPES%),D$(MAXPIPES%),SL#(MAXPIPES%),N#(MAXPIPES%)
+DIM	Q1#(MAXPIPES%),V#(MAXPIPES%),V1#(MAXPIPES%),L#(MAXPIPES%),F#(MAXPIPES%)
+DIM	U1#(MAXPIPES%),L1#(MAXPIPES%),D#(MAXPIPES%),MAJORSIZE#(23),ELLIPAREA#(23)
+DIM	ELLIPR#(23),QQF#(24),HORVVF#(24),VERTVVF#(22),MINORSIZE#(23)
+DIM	W1#(MAXPIPES%),D1%(MAXPIPES%),INTEN1$(50),REC$(7)
+
+$INCLUDE "STORMSUB.INC"
+
+OPEN "STORMSWR.DEF" FOR INPUT AS #3
+    INPUT #3, DEFNAME$
+CLOSE #3
+
+
+START:
+  GOSUB HEADING
+  GOSUB MENU
+  ENTER:
+    D1$ = INKEY$
+    IF (LEN(D1$)) <> 2 THEN ENTER
+    IF D1$ = CHR$(0)+CHR$(59) THEN GOSUB JOBINFO
+    IF D1$ = CHR$(0)+CHR$(60) THEN GOSUB ENTERSUBAREAS
+    IF D1$ = CHR$(0)+CHR$(61) THEN GOSUB EDITSUBAREAS
+    IF D1$ = CHR$(0)+CHR$(62) THEN GOSUB PIPEFLOW
+    IF D1$ = CHR$(0)+CHR$(63) THEN GOSUB PRINTSUBAREADATA
+    IF D1$ = CHR$(0)+CHR$(64) THEN GOSUB PRINTPIPEDATA
+    IF D1$ = CHR$(0)+CHR$(65) THEN GOSUB SYSTEMDEFAULTS
+    IF D1$ = CHR$(0)+CHR$(66) THEN GOSUB INTENSITYEDITOR
+    IF D1$ = CHR$(0)+CHR$(67) THEN GOTO EXITROUTINE
+  GOTO START
+
+
+MENU:
+  LOCATE 2,32
+  PRINT "PROGRAM MENU"
+  LOCATE 5,18: PRINT FNBOX$(40,2)
+  LOCATE 6,19: PRINT "KEY       PROGRAM LISTING"
+  LOCATE 8,20 : PRINT "F1       ENTER JOB INFORMATION"
+  LOCATE 9,20 : PRINT "F2       ENTER SUBAREA DATA"
+  LOCATE 10,20 :PRINT "F3       REVISE SUBAREA DATA"
+  LOCATE 11,20 :PRINT "F4       ENTER AND REVISE PIPE DATA"
+  LOCATE 12,20 :PRINT "F5       PRINT SUBAREA DATA"
+  LOCATE 13,20 :PRINT "F6       PRINT STORM SEWER DATA"
+  LOCATE 14,20 :PRINT "F7       EDIT SYSTEM DEFAULTS"
+  LOCATE 15,20 :PRINT "F8       EDIT TC/INTENSITY FILES"
+  LOCATE 16,20 :PRINT "F9       SAVE DATA/EXIT PROGRAM"
+  LOCATE 20,22 :PRINT "?????? PRESS DESIRED KEY ??????"
+RETURN
+
+HEADING:
+  CLS
+  SCREEN 0
+  COLOR 15,0,0
+  LOCATE 1,29
+  PRINT"STORM SEWER ANALYSIS"
+  COLOR 7,0,0
+RETURN
+
+
+
+REM  JOB INFORMATION ENTRY ROUTINE
+'--------------------------------------------------------------'
+JOBINFO:
+  GOSUB HEADING
+  LOCATE 2,27
+  PRINT "JOB INFORMATION ROUTINE"
+  IF F$ = CHT$(0) THEN F$ = DEFNAME$
+
+  EXISTING:
+    Y1$ = "Y"
+    LOCATE 10,5 : PRINT "EDIT EXISTING DATA FILE? ";:CALL PROM(Y1$,1,1)
+    IF Y1$ = "N" THEN REUSE
+    IF Y1$ <> "Y" THEN EXISTING
+      EXISTINGFILELABEL1:
+      LOCATE 16,5
+      PRINT "ENTER NAME OF EXISTING DATA FILE: ";:CALL PROM(F$,12,1)
+      TF$=F$
+      GOSUB TESTFILENAMEERROR
+      IF FILENAMEERROR%=1 THEN EXISTINGFILELABEL1
+        ON ERROR GOTO FILEERRMSG1
+        OPEN F$ FOR INPUT AS #1
+        INPUT #1, P1$,P3$(1),P3$(2),P3$(3),P3$(4),P4$(1),P4$(2),P4$(3),P4$(4),_
+                  I1$,N$,P5$,I2%,NUM1%,TIMECONCTYPE$,P2#
+        IF I2%>0 THEN
+          FOR I% = 1 TO I2%
+            INPUT #1, A$(I%), A5#(I%), C#(I%), T8#(I%), A1$(I%), A2$(I%),_
+                      A3$(I%), A4$(I%), I1#(I%)
+              FOR J% = 1 TO 4
+                INPUT #1, L$(I%,J%), S$(I%,J%), T#(I%,J%), T1$(I%,J%),_
+													U%(I%,J%),Z$(I%,J%),B$(I%,J%),DEP$(I%,J%)
+              NEXT J%
+          NEXT I%
+        END IF
+        IF NUM1%>0 THEN
+          FOR I% = 1 TO NUM1%
+            INPUT #1, A5$(I%), IN1$(I%), IN2$(I%), A6#(I%), A7#(I%), COMP1#(I%),_
+                      T1#(I%), T2#(I%), T3#(I%), INT1#(I%), Q#(I%), D$(I%),_
+                      SL#(I%), N#(I%), Q1#(I%), V#(I%), V1#(I%), L#(I%),_
+                      F#(I%), U1#(I%), L1#(I%), D#(I%)
+          NEXT I%
+        END IF
+        CLOSE #1
+      GOSUB PARAMETERBLOCK
+        LOCATE 6,23:PRINT P1$
+        LOCATE 7,49:PRINT NUM1%
+        LOCATE 8,52:PRINT I2%
+        LOCATE 10,14:PRINT P3$(1)
+        LOCATE 10,32:PRINT P4$(1)
+        LOCATE 11,14:PRINT P3$(2)
+        LOCATE 11,32:PRINT P4$(2)
+        LOCATE 12,14:PRINT P3$(3)
+        LOCATE 12,32:PRINT P4$(3)
+        LOCATE 13,14:PRINT P3$(4)
+        LOCATE 13,32:PRINT P4$(4)
+        GOSUB PRINTTCPARAMETER
+        LOCATE 15,24:PRINT I1$;" YEAR STORM"
+        LOCATE 16,30
+          IF N$="1" THEN PRINT Z4$
+          IF N$="2" THEN PRINT Z5$
+        LOCATE 17,24:PRINT P5$
+      GOSUB ENTERINFO
+      C1=VAL(P4$(1)):C2=VAL(P4$(2)):C3=VAL(P4$(3)):C4=VAL(P4$(4))
+      GOSUB LOADINTENSITY
+      GOSUB LOADELLPIPE
+      GOTO ENDJOBINFO
+
+    FILEERRMSG1:
+      LOCATE 18,5:COLOR 15,0:PRINT"FILE DOES NOT EXIST--REENTER FILE NAME!"
+      DELAY 3:COLOR 7,0
+      LOCATE 16,5:PRINT"                                                  "
+      LOCATE 18,5:PRINT"                                                  "
+      RESUME EXISTING
+
+  REUSE:
+    Y1$ = "Y"
+    LOCATE 12,5 : PRINT "REUSE OLD DATA FILE? ";:CALL PROM(Y1$,1,1)
+    IF Y1$ = "N" THEN CREATE
+    IF Y1$ <> "Y" THEN REUSE
+      REUSEFILELABEL1:
+      LOCATE 16,5
+      PRINT "ENTER NAME OF FILE TO BE REUSED: ";:CALL PROM(F$,12,1)
+      TF$=F$
+      GOSUB TESTFILENAMEERROR
+      IF FILENAMEERROR%=1 THEN REUSEFILELABEL1
+        ON ERROR GOTO FILEERRMSG2
+        OPEN F$ FOR INPUT AS #1
+        CLOSE #1
+      REUSELABEL1:
+      Y1$="N":LOCATE 18,5:PRINT"RENAME FILE? ";:CALL PROM(Y1$,1,1)
+      IF Y1$="N" THEN GOTO ENDRENAME
+      IF Y1$<>"Y" THEN REUSELABEL1
+        REUSEFILELABEL2:
+        F1$=F$:LOCATE 19,5:PRINT"ENTER NEW FILE NAME: ";:CALL PROM(F1$,12,1)
+            TF$=F1$
+            GOSUB TESTFILENAMEERROR
+            IF FILENAMEERROR%=1 THEN REUSEFILELABEL2
+            ON ERROR GOTO RENAME
+            OPEN F1$ FOR INPUT AS #1
+            CLOSE #1
+            LOCATE 21,5:COLOR 15,0:PRINT"FILE ALREADY EXISTS--REENTER FILE NAME!"
+            DELAY 3:COLOR 7,0
+            LOCATE 16,5:PRINT"                                                  "
+            LOCATE 18,5:PRINT"                       "
+            LOCATE 19,5:PRINT"                                                  "
+            LOCATE 21,5:PRINT"                                                  "
+            GOTO REUSE
+      RENAME:
+        NAME F$ AS F1$:F$=F1$
+        LOCATE 18,5:PRINT"              "
+        LOCATE 19,5:PRINT"                                         "
+        RESUME ENDRENAME
+      ENDRENAME:
+      GOSUB PARAMETERBLOCK
+      LOCATE 7,49:PRINT "0"
+      LOCATE 8,52:PRINT "0"
+      GOSUB ENTERINFO
+      GOSUB LOADINTENSITY
+      GOSUB LOADELLPIPE
+      GOTO ENDJOBINFO
+
+      FILEERRMSG2:
+        LOCATE 18,5:COLOR 15,0:PRINT"FILE DOES NOT EXIST--REENTER FILE NAME!"
+        DELAY 3:COLOR 7,0
+        LOCATE 16,5:PRINT"                                                  "
+        LOCATE 18,5:PRINT"                                                  "
+        RESUME REUSE
+
+  CREATE:
+    Y1$ = "Y"
+    LOCATE 14,5 : PRINT "CREATE NEW DATA FILE? ";:CALL PROM(Y1$,1,1)
+    IF Y1$ = "N" THEN ENDJOBINFO
+    IF Y1$ <> "Y" THEN CREATE
+      CREATEFILELABEL1:
+      LOCATE 16,5
+      PRINT "ENTER NAME OF FILE TO BE CREATED: ";:CALL PROM(F$,12,1)
+      TF$=F$
+      GOSUB TESTFILENAMEERROR
+      IF FILENAMEERROR%=1 THEN CREATEFILELABEL1
+      GOSUB PARAMETERBLOCK
+      LOCATE 7,49:PRINT "0"
+      LOCATE 8,52:PRINT "0"
+      GOSUB ENTERINFO
+      GOSUB LOADINTENSITY
+      GOSUB LOADELLPIPE
+
+ENDJOBINFO:
+RETURN
+
+TESTFILENAMEERROR:
+  FILENAMEERROR%=0
+  FOR J%=1 TO 12
+    IF MID$(TF$,J%,1)="." THEN J1%=J%
+    IF MID$(TF$,J%,1)=" " THEN
+      J3%=J%
+      FOR J2%=J% TO 12
+        IF MID$(TF$,J2%,1)<>" " THEN FILENAMEERROR%=1
+      NEXT J2%
+      EXIT FOR
+    END IF
+    IF J%=12 AND MID$(TF$,12,1)<>" " THEN J3%=13
+  NEXT J%
+  IF J1%>9 THEN FILENAMEERROR%=1
+  IF J1%>0 AND J3%>0 AND (J3%-J1%)>4 THEN FILENAMEERROR%=1
+RETURN
+
+PARAMETERBLOCK:
+  GOSUB HEADING
+  LOCATE 2,27: PRINT"JOB INFORMATION ROUTINE"
+  LOCATE 5,6 : PRINT"1) FILE NAME: ";:PRINT F$
+  LOCATE 6,6 : PRINT"2) PROJECT NAME: "
+  LOCATE 7,6 : PRINT"3) NUMBER OF PIPES IN FILE (MAXIMUM =";STR$(MAXPIPES%);"): "
+  LOCATE 8,6 : PRINT"4) NUMBER OF SUBAREAS IN FILE (MAXIMUM =";STR$(MAXPIPES%);"): "
+  LOCATE 9,6 : PRINT"5) RUNOFF COEFFICIENTS:"
+  LOCATE 10,11:PRINT"A) ------------- C = "
+  LOCATE 11,11:PRINT"B) ------------- C = "
+  LOCATE 12,11:PRINT"C) ------------- C = "
+  LOCATE 13,11:PRINT"D) ------------- C = "
+  LOCATE 14,6: PRINT"6) TIME CONC. METHOD: "
+  LOCATE 15,6: PRINT"7) RETURN PERIOD: "
+  LOCATE 16,6: PRINT"8) INTENSITY DATA USED: "
+  LOCATE 17,6: PRINT"9) CALCULATED BY: "
+RETURN
+
+
+ENTERINFO:
+  Y1$="N"
+  LOCATE 20,5:PRINT "ENTER NUMBER TO BE REVISED (N-EXITS):                                     ";
+  LOCATE 20,43:CALL PROM(Y1$,1,1)
+  IF Y1$ = "N" THEN RETURN
+  IF Y1$ = "1" THEN ENTERINFO
+  IF Y1$ = "2" THEN
+    IF P1$=CHT$(0) THEN P1$="SOCIETY HILL AT SOMERSET V & VI - BASIN #1"
+    LOCATE 21,5:PRINT "ENTER PROJECT NAME: ";:CALL PROM(P1$,50,1)
+    LOCATE 6,23:PRINT P1$
+    LOCATE 21,5:PRINT "                                                                         "
+    GOTO ENTERINFO
+  END IF
+  IF Y1$ = "3" THEN ENTERINFO
+  IF Y1$ = "4" THEN ENTERINFO
+  IF Y1$ = "5" THEN
+    CVALUE:
+    IF P3$(1)=CHT$(0) THEN P3$(1)="WOODED"
+    IF P3$(2)=CHT$(0) THEN P3$(2)="MEADOW"
+    IF P3$(3)=CHT$(0) THEN P3$(3)="GRASS"
+    IF P3$(4)=CHT$(0) THEN P3$(4)="IMPERVIOUS"
+    J%=1
+    GOSUB ENTERCUSE
+    IF P4$(1)=CHT$(0) THEN P4$(1)="0.25"
+    LOCATE 21,5:PRINT P3$(1);" -- C = ";:CALL PROM(P4$(1),4,1)
+    IF VAL(P4$(1))>1 THEN CVALUE
+    LOCATE 10,14:PRINT "-------------"
+    LOCATE 10,14:PRINT P3$(1)
+    LOCATE 10,32:PRINT P4$(1)
+    LOCATE 21,5:PRINT "                             "
+    IF P4$(2)=CHT$(0) THEN P4$(2)="0.25"
+    CVALUE1:
+    J%=2
+    GOSUB ENTERCUSE
+    LOCATE 21,5:PRINT P3$(2);" -- C = ";:CALL PROM(P4$(2),4,1)
+    IF VAL(P4$(2))>1 THEN CVALUE1
+    LOCATE 11,14:PRINT "-------------"
+    LOCATE 11,14:PRINT P3$(2)
+    LOCATE 11,32:PRINT P4$(2)
+    LOCATE 21,5:PRINT "                             "
+    IF P4$(3)=CHT$(0) THEN P4$(3)="0.30"
+    CVALUE2:
+    J%=3
+    GOSUB ENTERCUSE
+    LOCATE 21,5:PRINT P3$(3);" -- C = ";:CALL PROM(P4$(3),4,1)
+    IF VAL(P4$(3))>1 THEN CVALUE2
+    LOCATE 12,14:PRINT "-------------"
+    LOCATE 12,14:PRINT P3$(3)
+    LOCATE 12,32:PRINT P4$(3)
+    LOCATE 21,5:PRINT "                             "
+    IF P4$(4)=CHT$(0) THEN P4$(4)="0.90"
+    CVALUE3:
+    J%=4
+    GOSUB ENTERCUSE
+    LOCATE 21,5:PRINT P3$(4);" -- C = ";:CALL PROM(P4$(4),4,1)
+    IF VAL(P4$(4))>1 THEN CVALUE3
+    LOCATE 13,14:PRINT "-------------"
+    LOCATE 13,14:PRINT P3$(4)
+    LOCATE 13,32:PRINT P4$(4)
+    LOCATE 21,5:PRINT "                             "
+    C1=VAL(P4$(1)):C2=VAL(P4$(2)):C3=VAL(P4$(3)):C4=VAL(P4$(4))
+    IF C1+C2+C3+C4=0 THEN GOTO CVALUE
+    GOTO ENTERINFO
+  END IF
+  IF Y1$ = "6" THEN
+    IF TIMECONCTYPE$=CHT$(0) THEN TIMECONCTYPE$ = "1"
+    TCLABEL1:
+    LOCATE 20,5:PRINT "ENTER TIME CONC. METHOD:                               "
+    LOCATE 21,5:PRINT "(1-JUNE 1986 SCS METHOD, 2-SCS UPLAND METHOD)"
+    LOCATE 20,30:CALL PROM(TIMECONCTYPE$,1,1)
+    IF TIMECONCTYPE$<>"1" AND TIMECONCTYPE$<>"2" THEN TCLABEL1
+    IF TIMECONCTYPE$="1" THEN
+      LOCATE 20,36:PRINT "ENTER 2 YR, 24-HOUR RAINFALL (INCHES): ";
+      ENTERP2LABEL:
+      P2$=MID$(STR$(P2#),2,5)
+      IF P2#=0 THEN P2$="3.5 "
+      CALL PROM(P2$,4,1)
+      P2#=VAL(P2$)
+      IF P2#=0 THEN GOTO ENTERP2LABEL
+    END IF
+    GOSUB PRINTTCPARAMETER
+    LOCATE 20,5:PRINT "                               "
+    LOCATE 21,5:PRINT "                                                                "
+    GOTO ENTERINFO
+  END IF
+  IF Y1$ = "7" THEN
+    IF I1$=CHT$(0) THEN I1$ = "10"
+    LOCATE 21,5:PRINT "ENTER RETURN PERIOD (2,5,10,15,25,50,100 YR): ";_
+    :CALL PROM(I1$,3,1)
+    LOCATE 15,24:PRINT I1$;" YEAR STORM"
+    LOCATE 21,5:PRINT "                                                      "
+    GOTO ENTERINFO
+  END IF
+  IF Y1$ = "8" THEN
+    IF N$=CHT$(0) THEN N$="1"
+    LOCATE 19,1:PRINT"ENTER NUMBER FOR INTENSITY CURVES:"
+    LOCATE 20,5:PRINT"1) ";Z4$
+    LOCATE 21,5:PRINT"2) ";Z5$
+    IN11:
+      LOCATE 22,1:PRINT "NUMBER: ";:CALL PROM(N$,1,1)
+      IF N$="1" THEN
+        LOCATE 16,30:PRINT Z4$
+      END IF
+      IF N$="2" THEN
+        LOCATE 16,30:PRINT Z5$
+      END IF
+      IF N$<>"1" AND N$<>"2" THEN GOTO IN11
+      LOCATE 19,1:PRINT"                                                    "
+      LOCATE 20,5:PRINT"                                                    "
+      LOCATE 21,5:PRINT"                                                    "
+      LOCATE 22,1:PRINT"                 "
+    GOTO ENTERINFO
+  END IF
+  IF Y1$ = "9" THEN
+    IF P5$=CHT$(0) THEN P5$="T. RUGA"
+    LOCATE 21,5:PRINT"CALCULATED BY: ";:CALL PROM(P5$,10,1)
+    LOCATE 17,24:PRINT P5$
+    LOCATE 21,5:PRINT"                                                      "
+    GOTO ENTERINFO
+  END IF
+RETURN
+
+ENTERCUSE:
+  LOCATE 21,5:PRINT "ENTER LAND USE: ";:CALL PROM(P3$(J%),10,1)
+  FOR J1%=10 TO 1 STEP -1
+    IF MID$(P3$(J%),J1%,1)<>" " THEN
+      P3$(J%)=MID$(P3$(J%),1,J1%)+" "
+      EXIT FOR
+    END IF
+  NEXT J1%
+  LOCATE 21,5:PRINT "                                  "
+RETURN
+
+PRINTTCPARAMETER:
+  IF TIMECONCTYPE$="1" THEN
+    LOCATE 14,28:PRINT TIMEC1$
+    LOCATE 14,52:PRINT"2 YR RAINFALL =";P2#;"INCHES"
+  END IF
+  IF TIMECONCTYPE$="2" THEN
+    LOCATE 14,28:PRINT TIMEC2$
+  END IF
+RETURN
+
+LOADINTENSITY:
+  IF N$=CHT$(0) THEN INTENFILE$="NJDEP.INT"
+  IF N$="1" THEN INTENFILE$="NJDEP.INT"
+  IF N$="2" THEN INTENFILE$="ATLAN.INT"
+  IF I1$=CHT$(0) THEN I1$="10 "
+  OPEN INTENFILE$ FOR INPUT AS #2
+    INPUT #2, INTENLEN%,RECNUM%
+    FOR I%=1 TO RECNUM%
+      INPUT #2, REC$(I%)
+    NEXT I%
+    FOR I% = 1 TO INTENLEN%
+			INPUT #2, MIN1$(I%)
+      FOR J%=1 TO RECNUM%
+        INPUT #2, INTEN$(I%,J%)
+        IF REC$(J%)=I1$ THEN INTEN1$(I%) = INTEN$(I%,J%)
+      NEXT J%
+    NEXT I%
+  CLOSE #2
+RETURN
+
+LOADELLPIPE:
+  RESTORE ELLIPSIZE
+    FOR I%=1 TO 23
+      READ MAJORSIZE#(I%)
+    NEXT I%
+  ELLIPSIZE:
+		DATA 23,30,34,38,42,45,49,53,60,68,76,83,91,98,106,113,121,128,136,143,151,166,180
+  RESTORE ELLIPSIZE1
+    FOR I%=1 TO 23
+      READ MINORSIZE#(I%)
+    NEXT I%
+  ELLIPSIZE1:
+		DATA 14,19,22,24,27,29,32,34,38,43,48,53,58,63,68,72,77,82,87,92,97,106,116
+  RESTORE ELLIPAREA1
+    FOR I%=1 TO 23
+      READ ELLIPAREA#(I%)
+    NEXT I%
+  ELLIPAREA1:
+		DATA 1.84,3.27,4.1,5.11,6.3,7.37,8.8,10.21,12.91,16.59,20.49,24.78,29.5,34.62,40.15,46.1,52.43,59.22,66.41,74,81.97,99.2,118.64
+  RESTORE ELLIPR1
+    FOR I%=1 TO 23
+      READ ELLIPR#(I%)
+    NEXT I%
+  ELLIPR1:
+		DATA .367,.49,.546,.613,.686,.736,.812,.875,.969,1.106,1.229,1.352,1.475,1.598,1.721,1.845,1.967,2.091,2.215,2.34,2.461,2.707,2.968
+  RESTORE PARTFLOW
+    FOR I%=1 TO 24
+      READ QQF#(I%)
+    NEXT I%
+  PARTFLOW:
+		DATA 0,.05,.1,.15,.2,.25,.3,.35,.4,.45,.5,.55,.6,.65,.7,.75,.8,.85,.9,.95,1,1.05,1.1,1.12
+  RESTORE HORIZVEL
+    FOR I%=1 TO 24
+      READ HORVVF#(I%)
+    NEXT I%
+  HORIZVEL:
+		DATA 0,.47,.59,.68,.75,.81,.86,.9,.94,.97,1,1.025,1.05,1.075,1.1,1.12,1.14,1.15,1.17,1.175,1.18,1.18,1.175,1.15
+  RESTORE VERTVEL
+    FOR I%=1 TO 22
+      READ VERTVVF#(I%)
+    NEXT I%
+  VERTVEL:
+		DATA 0,.52,.67,.77,.82,.87,.9,.93,.96,.98,1,1.025,1.04,1.05,1.07,1.08,1.09,1.1,1.11,1.12,1.12,1.09
+RETURN
+
+
+
+REM  EXIT ROUTINE - SAVE FILES/EXIT PROGRAM
+'--------------------------------------------------------'
+$INCLUDE "EXIT.INC"
+
+
+REM  SUBAREA ENTRY ROUTINE
+'------------------------------------------------------------------------'
+$INCLUDE "ADDSUB.INC"
+
+
+REM  SUBAREA EDIT ROUTINE
+'------------------------------------------------------------------------'
+$INCLUDE "EDITSUB.INC"
+
+
+$SEGMENT  'DEFINE SECOND SEGMENT
+
+
+REM PIPE FLOW CALCULATION AND PRINT PIPE DATA ROUTINE
+'----------------------------------------------------------------------------'
+$INCLUDE "STORMPIP.INC"
+
+
+
+REM PRINT SUBAREA DATA ROUTINE
+'----------------------------------------------------------------------------'
+$INCLUDE "PRINTSUB.INC"
+
+
+REM INTENSITY DATA EDITOR
+'-----------------------------------------------------------------------------'
+$INCLUDE "INTNEDIT.INC"
+
+
+
+REM SYSTEM DEFAULTS ROUTINE
+'-----------------------------------------------------------------------------'
+SYSTEMDEFAULTS:
+  GOSUB HEADING
+
+  OPEN "STORMSWR.DEF" FOR OUTPUT AS #3
+    WRITE #3, DEFNAME$
+  CLOSE #3
+RETURN

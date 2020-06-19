@@ -1,0 +1,52 @@
+
+CLS
+SCREEN 0
+C1=15:C2=5:C3=1:C4=15
+GOSUB LOWERPIPE
+GOSUB UPPERPIPE
+GOSUB PIPEMENU
+END
+
+
+LOWERPIPE:
+  COLOR C1,C2
+  LOCATE 10,1:PRINT"    1       2       3       4      5      6      7      8      9     10    11   "
+  COLOR C2,C3
+  LOCATE 11,1:PRINT CHR$(179)
+  COLOR C4,C3
+  LOCATE 11,2:PRINT" AREA    FROM     TO     INCR.  TOTAL    C     TO     IN    TIME    I     Q   "
+  COLOR C2,C3:LOCATE 11,80:PRINT CHR$(179)
+  LOCATE 12,1:PRINT CHR$(179)
+  COLOR C4,C3
+  LOCATE 12,2:PRINT"                           A      A           INLET  CHAN.  CONC.       (CFS) "
+  COLOR C2,C3:LOCATE 12,80:PRINT CHR$(179)
+  COLOR C1,C2
+  LOCATE 15,1:PRINT"       12     13     14      15     16     17     18    19      20     21       "
+  COLOR C2,C3:LOCATE 16,1:PRINT CHR$(179)
+  COLOR C4,C3
+  LOCATE 16,2:PRINT"     PIPE    S      N      CAP.   VEL.   VEL.   LEN.  FALL   UPPER  LOWER     "
+  COLOR C2,C3:LOCATE 16,80:PRINT CHR$(179)
+  LOCATE 17,1:PRINT CHR$(179)
+  COLOR C4,C3
+  LOCATE 17,2:PRINT"     SIZE   (%)           (CFS)   FULL   ACT.   (FT)  (FT)    INV.   INV.     "
+  COLOR C2,C3:LOCATE 17,80:PRINT CHR$(179)
+  COLOR 7,0
+RETURN
+
+UPPERPIPE:
+  COLOR C4,C3
+  LOCATE 3,1:PRINT"  AREA    FROM     TO     INCR.  TOTAL    C     TO     IN    TIME    I     Q    "
+  LOCATE 4,1:PRINT"                            A      A           INLET  CHAN.  CONC.       (CFS)  "
+  LOCATE 6,1:PRINT"      PIPE    S      N      CAP.   VEL.   VEL.   LEN.  FALL   UPPER  LOWER      "
+  LOCATE 7,1:PRINT"      SIZE   (%)           (CFS)   FULL   ACT.   (FT)  (FT)    INV.   INV.      "
+  COLOR 7,0
+RETURN
+
+PIPEMENU:
+  COLOR 15,0
+  LOCATE 20,4:PRINT"F1 --- REVISE DATA        F4 --- MOVE BACKWARD       F7 --- DELETE PIPE"	
+  LOCATE 21,4:PRINT"F2 --- ADJUST SLOPE       F5 --- NEW PIPE            F8 --- REVISE SYSTEM"	
+  LOCATE 22,4:PRINT"F3 --- MOVE FORWARD       F6 --- INSERT PIPE         F9 --- EXIT"
+  LOCATE 23,28:PRINT"???? PRESS FUNCTION ????"
+RETURN
+
